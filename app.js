@@ -18,11 +18,15 @@ var firsttrainmoment = moment().format("hh:mm:ss");
 var frequency = 10;
 var name = "Train";
 var nextTrain = "";
+var i = 0;
 
 // Clear Firebase
 $("#cleartable").on("click", function(event) {
-    database.ref().set({});
+    database.ref().remove();
     $("#Table").empty();
+    $("#trainid").empty();
+    trivia.stop();
+    $("#arriving").empty();
 });
 
 // At the initial load and subsequent value changes, get a snapshot of the stored data.
@@ -44,7 +48,7 @@ database.ref().on("child_added", function(snapshot) {
 var createRow = function(newname,newdestination,newfirsttrain,newfrequency,newnexttrain) {
     // Get reference to existing tbody element, create a new table row element
     var tBody = $("tbody");
-    var tRow = $("<tr>");
+    var tRow = $("<tr>").attr("id", i);
 
     // Methods run on jQuery selectors return the selector they we run on
     // This is why we can create and save a reference to a td in the same statement we update its text
@@ -53,12 +57,23 @@ var createRow = function(newname,newdestination,newfirsttrain,newfrequency,newne
     var firsttrainTd = $("<td>").text(newfirsttrain);
     var frequencyTd = $("<td>").text(newfrequency);
     var nexttrainTd = $("<td>").text(newnexttrain);
+    
+    // var nameTd = $("<td>").text(newname);
+    // var destinationTd = $("<td>").text(newdestination);
+    // var firsttrainTd = $("<td>").text(newfirsttrain);
+    // var frequencyTd = $("<td>").text(newfrequency);
+    // var nexttrainTd = $("<td>").text(newnexttrain);
+    
+    var update = $("<td>").html("<button class='edit'>Edit</button>");
+    var remove = $("<td>").html("<button class='remove' index="+ i+ ">X</button>");
 
     // Append the newly created table data to the table row
-    tRow.append(nameTd, destinationTd, firsttrainTd, frequencyTd, nexttrainTd);
+    tRow.append(nameTd, destinationTd, firsttrainTd, frequencyTd, nexttrainTd, update,remove);
 
     // Append the table row to the table body
     tBody.append(tRow);
+
+    i++;   
   };
 
 // This function handles events where the name button is clicked
@@ -84,23 +99,29 @@ $("#submit").on("click", function(event) {
         frequency = $("#frequency-input").val().trim();
     }
     if ($("#firsttrain-input").val().trim() == ""){
-        firsttrain = "unknown";
-        nextTrain = " ";
+        $("#firsttimeprompt").text("Please enter first train time");
+        console.log("Please enter first train time");
     } else {
+        $("#firsttimeprompt").empty();
         firsttrain = $("#firsttrain-input").val().trim();
         firsttrainmoment = moment(firsttrain, "hh:mm:ss");
         nextTrain = arrivaltime(firsttrainmoment,frequency);
         console.log(nextTrain[0],nextTrain[1]);
+         // Save the new post in Firebase
+        // var test = database.child("test");
+        
+        $("#trainid").text(name);
+
+        database.ref(i).set({
+            name: name,
+            destination: destination,
+            firsttrain: firsttrain,
+            frequency: frequency,
+            nextTrain: nextTrain[0]
+        });
     }
 
-    // Save the new post in Firebase
-    database.ref().push({
-        name: name,
-        destination: destination,
-        firsttrain: firsttrain,
-        frequency: frequency,
-        nextTrain: nextTrain[0]
-      });
+   
   
 });  
 
@@ -128,15 +149,11 @@ function arrivaltime(firsttrain){
     // console.log("ARRIVAL TIME: " + moment(nextTrain).format("hh:mm"));
 }
 
-function precisionRound(number, precision) {
-    var factor = Math.pow(10, precision);
-    return Math.round(number * factor) / factor;
-  }
-
-
-
-var clock;
-  
+// function precisionRound(number, precision) {
+//     var factor = Math.pow(10, precision);
+//     return Math.round(number * factor) / factor;
+//   }
+var clock; 
 var trivia = {
     name: "Train Clock",
     clockRunning: false,
@@ -180,7 +197,7 @@ var trivia = {
 
     count: function() {
         // decrement time by 1, remember we cant use "this" here.
-        console.log(trivia.time);
+        // console.log(trivia.time);
         trivia.time--;
 
         // Get the current time, pass that into the timeConverter function and save the result in a variable.
@@ -188,13 +205,13 @@ var trivia = {
 
         // console.log(converted);
         if (converted == "00:00"){
-          console.log("TIMEOUT");
+          console.log("Train's here!");
+
+          $("#firsttimeprompt").text("Train's Here!");
           trivia.stop();
-        //   trivia.time = time;
-          trivia.i++;
           // Use the variable we just created to show the converted time in the "display" div.
         } else {
-            console.log(converted);
+            // console.log(converted);
             $("#arriving").text(converted);
         }
     },
@@ -219,3 +236,16 @@ var trivia = {
       return minutes + ":" + seconds;
     }
 }
+
+$(document).on("click", ".edit", function(){
+    console.log('edit');
+});
+
+
+$(document).on("click", ".remove", function(){
+    var del = $(this).attr("index");
+    console.log(del);
+    $("#" + del).empty();
+    var test = database.ref(del).remove();
+    // database.ref(test).remove();
+});
